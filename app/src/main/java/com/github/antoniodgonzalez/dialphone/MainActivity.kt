@@ -14,7 +14,6 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.widget.Button
 import android.widget.Toast
 
 import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialEventListener
@@ -37,8 +36,12 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
             finish()
         }
 
-        val button = findViewById<Button>(R.id.callButton)
-        button.setOnClickListener { startCall() }
+        callButton.setOnClickListener { startCall() }
+        deleteButton.setOnClickListener { deleteNumber() }
+    }
+
+    private fun deleteNumber() {
+        numberTextView.text = numberTextView.text.dropLast(1)
     }
 
     private fun startCall() {

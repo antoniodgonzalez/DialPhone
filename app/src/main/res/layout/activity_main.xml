@@ -38,4 +38,13 @@
         tools:layout_editor_absoluteX="33dp"
         tools:layout_editor_absoluteY="16dp" />
 
+    <Button
+        android:id="@+id/deleteButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="20dp"
+        android:text="DEL"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:layout_editor_absoluteY="80dp" />
+
 </android.support.constraint.ConstraintLayout>
