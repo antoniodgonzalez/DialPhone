@@ -10,6 +10,7 @@
         android:id="@+id/numberTextView"
         android:layout_width="318dp"
         android:layout_height="51dp"
+        android:phoneNumber="false"
         android:textAlignment="center"
         android:textSize="36sp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -18,14 +19,14 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.31" />
 
-    <Button
+    <android.support.design.widget.FloatingActionButton
         android:id="@+id/callButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="28dp"
         android:layout_marginEnd="148dp"
         android:layout_marginStart="148dp"
-        android:text="Call"
+        android:src="@drawable/ic_call"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
