@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     private var bluetoothAdapter: BluetoothAdapter? = null
     private val bluetoothSerialService = BluetoothSerialService(this)
+    private var number = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,15 +34,19 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
         if (bluetoothAdapter == null) {
             Toast.makeText(this, R.string.bt_not_available_leaving, Toast.LENGTH_LONG).show()
-            finish()
+            if (!BuildConfig.DEBUG) {
+                finish()
+            }
         }
 
+        displayNumber()
         callButton.setOnClickListener { startCall() }
         deleteButton.setOnClickListener { deleteNumber() }
     }
 
     private fun deleteNumber() {
-        numberTextView.text = numberTextView.text.dropLast(1)
+        number = number.dropLast(1)
+        displayNumber()
     }
 
     private fun startCall() {
@@ -70,7 +75,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
     public override fun onStart() {
         super.onStart()
 
-        if (!bluetoothAdapter!!.isEnabled) {
+        if (bluetoothAdapter != null && !bluetoothAdapter!!.isEnabled) {
             val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             startActivityForResult(enableIntent, REQUEST_ENABLE_BT)
         }
@@ -89,10 +94,10 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         }
     }
 
-    public override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent) {
+    public override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         when (requestCode) {
             REQUEST_CONNECT_DEVICE -> if (resultCode == Activity.RESULT_OK) {
-                val address = data.extras!!.getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS)
+                val address = data!!.extras!!.getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS)
                 bluetoothSerialService.connect(address)
             }
             REQUEST_ENABLE_BT -> if (resultCode != Activity.RESULT_OK) {
@@ -120,12 +125,17 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         return false
     }
 
+    private fun displayNumber() {
+        val regex = Regex("(.{1,3})(.{0,2})(.{0,2})(.{0,2})");
+        numberTextView.text = number.replaceFirst(regex, "$1 $2 $3 $4").trim()
+    }
+
     override fun onDataReceived(buffer: ByteArray) {
         val message = String(buffer)
         Log.d(TAG, "onDataReceived: " + message)
         if (message.length == 1 && message[0] >= '0' && message[0] <= '9') {
-            val number = numberTextView.text.toString() + message
-            numberTextView.text = number
+            number += message
+            displayNumber()
             if (number.length == 9) {
                 startCall()
             }
