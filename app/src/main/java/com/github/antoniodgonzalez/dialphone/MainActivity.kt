@@ -3,6 +3,8 @@ package com.github.antoniodgonzalez.dialphone
 import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -11,6 +13,7 @@ import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
@@ -19,12 +22,40 @@ import android.widget.Toast
 import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialEventListener
 import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialService
 import kotlinx.android.synthetic.main.activity_main.*
+import android.content.IntentFilter
+
+const val TAG = "MainActivity"
+
+const val REQUEST_CONNECT_DEVICE = 1
+const val REQUEST_ENABLE_BT = 3
+const val REQUEST_PHONE = 5
 
 class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     private var bluetoothAdapter: BluetoothAdapter? = null
     private val bluetoothSerialService = BluetoothSerialService(this)
     private var number = ""
+
+    private val phoneCallReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                "android.intent.action.PHONE_STATE" -> {
+                    val state = intent.extras.getString(TelephonyManager.EXTRA_STATE)
+                    when (state) {
+                        TelephonyManager.EXTRA_STATE_RINGING ->
+                            startRinging()
+                        TelephonyManager.EXTRA_STATE_IDLE,
+                        TelephonyManager.EXTRA_STATE_OFFHOOK ->
+                            stopRinging()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startRinging() = bluetoothSerialService.write("r".toByteArray())
+
+    private fun stopRinging() = bluetoothSerialService.write("-".toByteArray())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +73,9 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         displayNumber()
         callButton.setOnClickListener { startCall() }
         deleteButton.setOnClickListener { deleteNumber() }
+
+        val intentFilter = IntentFilter("android.intent.action.PHONE_STATE")
+        registerReceiver(phoneCallReceiver, intentFilter)
     }
 
     private fun deleteNumber() {
@@ -84,6 +118,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
     public override fun onDestroy() {
         super.onDestroy()
         bluetoothSerialService.stop()
+        unregisterReceiver(phoneCallReceiver)
     }
 
     public override fun onResume() {
@@ -164,13 +199,5 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
                 stateTextView.text = getString(R.string.connected_to, bluetoothSerialService.deviceName)
             }
         }
-    }
-
-    companion object {
-        private val TAG = "MainActivity"
-
-        private val REQUEST_CONNECT_DEVICE = 1
-        private val REQUEST_ENABLE_BT = 3
-        private val REQUEST_PHONE = 5
     }
 }
