@@ -24,11 +24,10 @@ import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialService
 import kotlinx.android.synthetic.main.activity_main.*
 import android.content.IntentFilter
 
-const val TAG = "MainActivity"
+private const val TAG = "MainActivity"
 
-const val REQUEST_CONNECT_DEVICE = 1
-const val REQUEST_ENABLE_BT = 3
-const val REQUEST_PHONE = 5
+private const val REQUEST_ENABLE_BT = 3
+private const val REQUEST_PHONE = 5
 
 class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
@@ -131,10 +130,6 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     public override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         when (requestCode) {
-            REQUEST_CONNECT_DEVICE -> if (resultCode == Activity.RESULT_OK) {
-                val address = data!!.extras!!.getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS)
-                bluetoothSerialService.connect(address)
-            }
             REQUEST_ENABLE_BT -> if (resultCode != Activity.RESULT_OK) {
                 Log.d(TAG, "BT not enabled")
                 Toast.makeText(this, R.string.bt_not_enabled_leaving,
@@ -151,9 +146,10 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.secure_connect_scan -> {
-                val serverIntent = Intent(this, DeviceListActivity::class.java)
-                startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE)
+            R.id.connect_scan -> {
+                val f = DeviceListFragment()
+                f.onSelectedDevice = { address -> bluetoothSerialService.connect(address) }
+                f.show(fragmentManager, "dialog")
                 return true
             }
         }
