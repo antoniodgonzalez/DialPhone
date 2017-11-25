@@ -24,6 +24,8 @@ import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialService
 import kotlinx.android.synthetic.main.activity_main.*
 import android.content.IntentFilter
 import android.content.res.ColorStateList
+import android.media.AudioManager
+import android.media.ToneGenerator
 
 private const val TAG = "MainActivity"
 
@@ -64,7 +66,10 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     private fun requestState() = bluetoothSerialService.write("s".toByteArray())
 
+    private val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+
     private fun dial(digit: String) {
+        toneGenerator.startTone(digit.toInt(), 100)
         number += digit
         if (number.length == 9) {
             startCall()
@@ -72,12 +77,14 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
     }
 
     private fun hangUp() {
+        toneGenerator.stopTone()
         callButton.setImageResource(R.drawable.ic_call_end)
         callButton.backgroundTintList = ColorStateList.valueOf(getColor(android.R.color.holo_red_dark))
         number = ""
     }
 
     private fun pickUp() {
+        toneGenerator.startTone(ToneGenerator.TONE_CDMA_DIAL_TONE_LITE)
         callButton.setImageResource(R.drawable.ic_call)
         callButton.backgroundTintList = ColorStateList.valueOf(getColor(android.R.color.holo_green_dark))
     }
