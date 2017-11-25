@@ -7,8 +7,10 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.UUID;
 
@@ -52,9 +54,7 @@ public class BluetoothSerialService {
                     mListener.onStateChange(msg.arg1);
                     break;
                 case MESSAGE_READ:
-                    byte[] buffer = new byte[msg.arg1];
-                    System.arraycopy(msg.obj, 0, buffer, 0, buffer.length);
-                    mListener.onDataReceived(buffer);
+                    mListener.onDataReceived((String)msg.obj);
                     break;
                 case MESSAGE_ERROR:
                     mListener.onError((String)msg.obj);
@@ -258,7 +258,7 @@ public class BluetoothSerialService {
                 try {
                     mmSocket.close();
                 } catch (IOException e2) {
-//                    Log.e(TAG, "unable to close() socket during connection failure", e2);
+                    Log.e(TAG, "unable to close() socket during connection failure", e2);
                 }
                 // Start the service over to restart listening mode
                 BluetoothSerialService.this.start();
@@ -278,7 +278,7 @@ public class BluetoothSerialService {
             try {
                 mmSocket.close();
             } catch (IOException e) {
-//                Log.e(TAG, "close() of connect socket failed", e);
+                Log.e(TAG, "close() of connect socket failed", e);
             }
         }
     }
@@ -289,8 +289,8 @@ public class BluetoothSerialService {
      */
     private class ConnectedThread extends Thread {
         private final BluetoothSocket mmSocket;
-        private final InputStream mmInStream;
         private final OutputStream mmOutStream;
+        private final BufferedReader inputReader;
 
         ConnectedThread(BluetoothSocket socket) {
             mmSocket = socket;
@@ -305,21 +305,18 @@ public class BluetoothSerialService {
                 Log.e(TAG, "temp sockets not created", e);
             }
 
-            mmInStream = tmpIn;
+            inputReader = new BufferedReader(new InputStreamReader(tmpIn));
             mmOutStream = tmpOut;
         }
 
         public void run() {
-            byte[] buffer = new byte[1024];
-            int bytes;
-
             // Keep listening to the InputStream while connected
             while (true) {
                 try {
-                    bytes = mmInStream.read(buffer);
+                    String input = inputReader.readLine();
 
                     // Notify there is obtained data
-                    mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer).sendToTarget();
+                    mHandler.obtainMessage(MESSAGE_READ, input).sendToTarget();
 
                 } catch (IOException e) {
                     connectionLost();

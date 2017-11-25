@@ -4,7 +4,7 @@ import java.util.EventListener;
 
 public interface BluetoothSerialEventListener extends EventListener {
 
-    void onDataReceived(byte[] buffer);
+    void onDataReceived(String line);
 
     void onError(String error);
 

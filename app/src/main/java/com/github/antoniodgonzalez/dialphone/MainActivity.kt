@@ -23,6 +23,7 @@ import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialEventListe
 import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialService
 import kotlinx.android.synthetic.main.activity_main.*
 import android.content.IntentFilter
+import android.content.res.ColorStateList
 
 private const val TAG = "MainActivity"
 
@@ -34,6 +35,11 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
     private var bluetoothAdapter: BluetoothAdapter? = null
     private val bluetoothSerialService = BluetoothSerialService(this)
     private var number = ""
+        set(value) {
+            val regex = Regex("(.{1,3})(.{0,2})(.{0,2})(.{0,2})");
+            numberTextView.text = value.replaceFirst(regex, "$1 $2 $3 $4").trim()
+            field = value
+        }
 
     private val phoneCallReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -54,7 +60,27 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     private fun startRinging() = bluetoothSerialService.write("r".toByteArray())
 
-    private fun stopRinging() = bluetoothSerialService.write("-".toByteArray())
+    private fun stopRinging() = bluetoothSerialService.write("o".toByteArray())
+
+    private fun requestState() = bluetoothSerialService.write("s".toByteArray())
+
+    private fun dial(digit: String) {
+        number += digit
+        if (number.length == 9) {
+            startCall()
+        }
+    }
+
+    private fun hangUp() {
+        callButton.setImageResource(R.drawable.ic_call_end)
+        callButton.backgroundTintList = ColorStateList.valueOf(getColor(android.R.color.holo_red_dark))
+        number = ""
+    }
+
+    private fun pickUp() {
+        callButton.setImageResource(R.drawable.ic_call)
+        callButton.backgroundTintList = ColorStateList.valueOf(getColor(android.R.color.holo_green_dark))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,8 +95,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
             }
         }
 
-        displayNumber()
-        callButton.setOnClickListener { startCall() }
+        callButton.setOnClickListener { if (number.isNotEmpty()) startCall() }
         deleteButton.setOnClickListener { deleteNumber() }
 
         val intentFilter = IntentFilter("android.intent.action.PHONE_STATE")
@@ -79,7 +104,6 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     private fun deleteNumber() {
         number = number.dropLast(1)
-        displayNumber()
     }
 
     private fun startCall() {
@@ -156,26 +180,18 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         return false
     }
 
-    private fun displayNumber() {
-        val regex = Regex("(.{1,3})(.{0,2})(.{0,2})(.{0,2})");
-        numberTextView.text = number.replaceFirst(regex, "$1 $2 $3 $4").trim()
-    }
-
-    override fun onDataReceived(buffer: ByteArray) {
-        val message = String(buffer)
+    override fun onDataReceived(message: String) {
         Log.d(TAG, "onDataReceived: " + message)
-        if (message.length == 1 && message[0] >= '0' && message[0] <= '9') {
-            number += message
-            displayNumber()
-            if (number.length == 9) {
-                startCall()
-            }
+        when {
+            message.startsWith("DIAL") -> dial(message.substring(4))
+            message == "HANGUP" -> hangUp()
+            message == "PICKUP" -> pickUp()
         }
     }
 
     override fun onError(error: String) {
         Log.e(TAG, "onError: " + error)
-        stateTextView.setTextColor(ContextCompat.getColor(this, R.color.colorError))
+        stateTextView.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
         stateTextView.text = getString(R.string.connection_error, error)
     }
 
@@ -191,8 +207,9 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
                 stateTextView.setText(R.string.connecting)
             }
             BluetoothSerialService.STATE_CONNECTED -> {
-                stateTextView.setTextColor(ContextCompat.getColor(this, R.color.colorOk))
+                stateTextView.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
                 stateTextView.text = getString(R.string.connected_to, bluetoothSerialService.deviceName)
+                requestState()
             }
         }
     }
