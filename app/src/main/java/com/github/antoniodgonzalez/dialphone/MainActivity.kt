@@ -36,6 +36,9 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     private var bluetoothAdapter: BluetoothAdapter? = null
     private val bluetoothSerialService = BluetoothSerialService(this)
+
+    private val preferences: Preferences by lazy { Preferences(this) }
+
     private var number = ""
         set(value) {
             val regex = Regex("(.{1,3})(.{0,2})(.{0,2})(.{0,2})");
@@ -139,9 +142,14 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
     public override fun onStart() {
         super.onStart()
 
-        if (bluetoothAdapter != null && !bluetoothAdapter!!.isEnabled) {
-            val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            startActivityForResult(enableIntent, REQUEST_ENABLE_BT)
+        when {
+            bluetoothAdapter != null && !bluetoothAdapter!!.isEnabled -> {
+                val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                startActivityForResult(enableIntent, REQUEST_ENABLE_BT)
+            }
+            preferences.bluetoothDeviceAddress != null -> {
+                connectToDevice(preferences.bluetoothDeviceAddress!!)
+            }
         }
     }
 
@@ -175,11 +183,16 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         return true
     }
 
+    private fun connectToDevice(address: String) {
+        bluetoothSerialService.connect(address)
+        preferences.bluetoothDeviceAddress = address
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.connect_scan -> {
                 val f = DeviceListFragment()
-                f.onSelectedDevice = { address -> bluetoothSerialService.connect(address) }
+                f.onSelectedDevice = { address -> connectToDevice(address) }
                 f.show(fragmentManager, "dialog")
                 return true
             }
