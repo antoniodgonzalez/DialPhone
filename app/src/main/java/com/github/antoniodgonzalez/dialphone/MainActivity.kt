@@ -16,7 +16,7 @@ import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.widget.Toast
+
 
 import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialEventListener
 import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialService
@@ -25,6 +25,7 @@ import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.support.design.widget.Snackbar
 
 private const val TAG = "MainActivity"
 
@@ -94,7 +95,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         setContentView(R.layout.activity_main)
 
         if (BluetoothAdapter.getDefaultAdapter() == null) {
-            Toast.makeText(this, R.string.bt_not_available, Toast.LENGTH_LONG).show()
+            Snackbar.make(mainLayout, R.string.bt_not_available, Snackbar.LENGTH_LONG).show()
             if (!BuildConfig.DEBUG) {
                 finish()
             }
@@ -171,7 +172,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
                     }
                     else -> {
                         Log.d(TAG, "BT not enabled")
-                        Toast.makeText(this, R.string.bt_not_enabled, Toast.LENGTH_SHORT).show()
+                        Snackbar.make(mainLayout, R.string.bt_not_enabled, Snackbar.LENGTH_LONG).show()
                     }
                 }
             }

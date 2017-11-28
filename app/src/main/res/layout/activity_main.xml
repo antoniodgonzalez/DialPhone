@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mainLayout"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -10,27 +11,20 @@
 
     <TextView
         android:id="@+id/numberTextView"
-        android:layout_width="432dp"
-        android:layout_height="51dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:textAlignment="center"
         android:textSize="36sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.203" />
+        android:layout_gravity="top"
+        android:layout_marginTop="100dp" />
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/callButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="28dp"
-        android:layout_marginEnd="148dp"
-        android:layout_marginStart="148dp"
-        android:src="@drawable/ic_call"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        android:layout_gravity="bottom|center"
+        android:src="@drawable/ic_call" />
 
     <TextView
         android:id="@+id/stateTextView"
@@ -38,19 +32,16 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
-        android:text="@string/not_connected"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:text="@string/not_connected" />
 
     <ImageButton
         android:id="@+id/deleteButton"
+        android:contentDescription="@string/call"
         android:layout_width="60dp"
         android:layout_height="50dp"
-        android:layout_marginEnd="0dp"
-        android:layout_marginTop="0dp"
+        android:layout_gravity="end"
+        android:layout_marginTop="100dp"
         android:background="@android:color/transparent"
-        android:src="@drawable/ic_backspace"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/numberTextView" />
+        android:src="@drawable/ic_backspace" />
 
-</android.support.constraint.ConstraintLayout>
+</android.support.design.widget.CoordinatorLayout>
