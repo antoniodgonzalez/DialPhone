@@ -10,7 +10,6 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.support.v4.app.ActivityCompat
-import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.telephony.TelephonyManager
@@ -34,14 +33,13 @@ private const val REQUEST_PHONE = 5
 
 class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
-    private var bluetoothAdapter: BluetoothAdapter? = null
     private val bluetoothSerialService = BluetoothSerialService(this)
 
-    private val preferences: Preferences by lazy { Preferences(this) }
+    private val preferences by lazy { Preferences(this) }
 
     private var number = ""
         set(value) {
-            val regex = Regex("(.{1,3})(.{0,2})(.{0,2})(.{0,2})");
+            val regex = Regex("(.{1,3})(.{0,2})(.{0,2})(.{0,2})")
             numberTextView.text = value.replaceFirst(regex, "$1 $2 $3 $4").trim()
             field = value
         }
@@ -50,8 +48,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 "android.intent.action.PHONE_STATE" -> {
-                    val state = intent.extras.getString(TelephonyManager.EXTRA_STATE)
-                    when (state) {
+                    when (intent.extras.getString(TelephonyManager.EXTRA_STATE)) {
                         TelephonyManager.EXTRA_STATE_RINGING ->
                             startRinging()
                         TelephonyManager.EXTRA_STATE_IDLE,
@@ -96,10 +93,8 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-
-        if (bluetoothAdapter == null) {
-            Toast.makeText(this, R.string.bt_not_available_leaving, Toast.LENGTH_LONG).show()
+        if (BluetoothAdapter.getDefaultAdapter() == null) {
+            Toast.makeText(this, R.string.bt_not_available, Toast.LENGTH_LONG).show()
             if (!BuildConfig.DEBUG) {
                 finish()
             }
@@ -125,11 +120,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         startActivity(createCallIntent())
     }
 
-    private fun createCallIntent(): Intent {
-        val callIntent = Intent(Intent.ACTION_CALL)
-        callIntent.data = Uri.parse("tel:${numberTextView.text}")
-        return callIntent
-    }
+    private fun createCallIntent() = Intent(Intent.ACTION_CALL, Uri.parse("tel:$number"))
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         when (requestCode) {
@@ -143,11 +134,13 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         super.onStart()
 
         when {
-            bluetoothAdapter != null && !bluetoothAdapter!!.isEnabled -> {
+            BluetoothAdapter.getDefaultAdapter() == null -> return
+            !BluetoothAdapter.getDefaultAdapter().isEnabled -> {
                 val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                 startActivityForResult(enableIntent, REQUEST_ENABLE_BT)
             }
-            preferences.bluetoothDeviceAddress != null -> {
+            preferences.bluetoothDeviceAddress != null &&
+                    bluetoothSerialService.state != BluetoothSerialService.STATE_CONNECTED -> {
                 connectToDevice(preferences.bluetoothDeviceAddress!!)
             }
         }
@@ -169,11 +162,18 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     public override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         when (requestCode) {
-            REQUEST_ENABLE_BT -> if (resultCode != Activity.RESULT_OK) {
-                Log.d(TAG, "BT not enabled")
-                Toast.makeText(this, R.string.bt_not_enabled_leaving,
-                        Toast.LENGTH_SHORT).show()
-                this.finish()
+            REQUEST_ENABLE_BT -> {
+                when (resultCode) {
+                    Activity.RESULT_OK -> {
+                        if (preferences.bluetoothDeviceAddress != null) {
+                            connectToDevice(preferences.bluetoothDeviceAddress!!)
+                        }
+                    }
+                    else -> {
+                        Log.d(TAG, "BT not enabled")
+                        Toast.makeText(this, R.string.bt_not_enabled, Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
     }
@@ -211,7 +211,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     override fun onError(error: String) {
         Log.e(TAG, "onError: " + error)
-        stateTextView.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+        stateTextView.setTextColor(getColor(android.R.color.holo_red_dark))
         stateTextView.text = getString(R.string.connection_error, error)
     }
 
@@ -227,7 +227,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
                 stateTextView.setText(R.string.connecting)
             }
             BluetoothSerialService.STATE_CONNECTED -> {
-                stateTextView.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+                stateTextView.setTextColor(getColor(android.R.color.holo_green_dark))
                 stateTextView.text = getString(R.string.connected_to, bluetoothSerialService.deviceName)
                 requestState()
             }
