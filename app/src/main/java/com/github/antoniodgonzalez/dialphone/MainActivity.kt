@@ -6,35 +6,30 @@ import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.graphics.Color
+import android.content.res.ColorStateList
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.net.Uri
+import android.os.Bundle
+import android.support.design.widget.Snackbar
 import android.support.v4.app.ActivityCompat
 import android.support.v7.app.AppCompatActivity
-import android.os.Bundle
 import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-
-
-import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialEventListener
-import com.github.antoniodgonzalez.dialphone.bluetooth.BluetoothSerialService
 import kotlinx.android.synthetic.main.activity_main.*
-import android.content.IntentFilter
-import android.content.res.ColorStateList
-import android.media.AudioManager
-import android.media.ToneGenerator
-import android.support.design.widget.Snackbar
 
 private const val TAG = "MainActivity"
 
 private const val REQUEST_ENABLE_BT = 3
 private const val REQUEST_PHONE = 5
 
-class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
+class MainActivity : AppCompatActivity(), PhoneServiceEventListener {
 
-    private val bluetoothSerialService = BluetoothSerialService(this)
+    private val phoneService = PhoneService(this)
 
     private val preferences by lazy { Preferences(this) }
 
@@ -51,25 +46,19 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
                 "android.intent.action.PHONE_STATE" -> {
                     when (intent.extras.getString(TelephonyManager.EXTRA_STATE)) {
                         TelephonyManager.EXTRA_STATE_RINGING ->
-                            startRinging()
+                            phoneService.startRinging()
                         TelephonyManager.EXTRA_STATE_IDLE,
                         TelephonyManager.EXTRA_STATE_OFFHOOK ->
-                            stopRinging()
+                            phoneService.stopRinging()
                     }
                 }
             }
         }
     }
 
-    private fun startRinging() = bluetoothSerialService.write("r".toByteArray())
-
-    private fun stopRinging() = bluetoothSerialService.write("o".toByteArray())
-
-    private fun requestState() = bluetoothSerialService.write("s".toByteArray())
-
     private val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
 
-    private fun dial(digit: String) {
+    override fun onDial(digit: String) {
         toneGenerator.startTone(digit.toInt(), 100)
         number += digit
         if (number.length == 9) {
@@ -77,14 +66,14 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         }
     }
 
-    private fun hangUp() {
+    override fun onHangUp() {
         toneGenerator.stopTone()
         callButton.setImageResource(R.drawable.ic_call_end)
         callButton.backgroundTintList = ColorStateList.valueOf(getColor(android.R.color.holo_red_dark))
         number = ""
     }
 
-    private fun pickUp() {
+    override fun onPickUp() {
         toneGenerator.startTone(ToneGenerator.TONE_CDMA_DIAL_TONE_LITE)
         callButton.setImageResource(R.drawable.ic_call)
         callButton.backgroundTintList = ColorStateList.valueOf(getColor(android.R.color.holo_green_dark))
@@ -125,7 +114,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         when (requestCode) {
-            REQUEST_PHONE -> if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            REQUEST_PHONE -> if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
                 startActivity(createCallIntent())
             }
         }
@@ -140,8 +129,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
                 val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                 startActivityForResult(enableIntent, REQUEST_ENABLE_BT)
             }
-            preferences.bluetoothDeviceAddress != null &&
-                    bluetoothSerialService.state != BluetoothSerialService.STATE_CONNECTED -> {
+            preferences.bluetoothDeviceAddress != null -> {
                 connectToDevice(preferences.bluetoothDeviceAddress!!)
             }
         }
@@ -149,16 +137,13 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
 
     public override fun onDestroy() {
         super.onDestroy()
-        bluetoothSerialService.stop()
+        phoneService.disconnect()
         unregisterReceiver(phoneCallReceiver)
     }
 
     public override fun onResume() {
         super.onResume()
-
-        if (bluetoothSerialService.state == BluetoothSerialService.STATE_NONE) {
-            bluetoothSerialService.start()
-        }
+        phoneService.start()
     }
 
     public override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -185,7 +170,7 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
     }
 
     private fun connectToDevice(address: String) {
-        bluetoothSerialService.connect(address)
+        phoneService.connect(address)
         preferences.bluetoothDeviceAddress = address
     }
 
@@ -201,36 +186,26 @@ class MainActivity : AppCompatActivity(), BluetoothSerialEventListener {
         return false
     }
 
-    override fun onDataReceived(message: String) {
-        Log.d(TAG, "onDataReceived: " + message)
-        when {
-            message.startsWith("DIAL") -> dial(message.substring(4))
-            message == "HANGUP" -> hangUp()
-            message == "PICKUP" -> pickUp()
-        }
-    }
-
     override fun onError(error: String) {
         Log.e(TAG, "onError: " + error)
         stateTextView.setTextColor(getColor(android.R.color.holo_red_dark))
         stateTextView.text = getString(R.string.connection_error, error)
     }
 
-    override fun onStateChange(state: Int) {
-        Log.d(TAG, "onStateChange: " + Integer.toString(state))
+    override fun onStateChange(state: PoneServiceState) {
+        Log.d(TAG, "onStateChange: " + state.toString())
         when (state) {
-            BluetoothSerialService.STATE_NONE -> {
-                stateTextView.setTextColor(Color.parseColor("gray"))
+            PoneServiceState.NONE -> {
+                stateTextView.setTextColor(getColor(android.R.color.darker_gray))
                 stateTextView.setText(R.string.not_connected)
             }
-            BluetoothSerialService.STATE_CONNECTING -> {
-                stateTextView.setTextColor(Color.parseColor("gray"))
+            PoneServiceState.CONNECTING -> {
+                stateTextView.setTextColor(getColor(android.R.color.darker_gray))
                 stateTextView.setText(R.string.connecting)
             }
-            BluetoothSerialService.STATE_CONNECTED -> {
+            PoneServiceState.CONNECTED -> {
                 stateTextView.setTextColor(getColor(android.R.color.holo_green_dark))
-                stateTextView.text = getString(R.string.connected_to, bluetoothSerialService.deviceName)
-                requestState()
+                stateTextView.text = getString(R.string.connected_to, phoneService.deviceName)
             }
         }
     }
